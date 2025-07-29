@@ -217,7 +217,7 @@ class Ngram02:
             #         print(current_ngram)
             if current_ngram in self.n_gram_model:
                 next_word_probs = self.n_gram_model[current_ngram]
-                next_word = random.choices(list(next_word_probs.keys()), list(next_word_probs.values()))[0]
+                next_word = random.choices(population=list(next_word_probs.keys()), weights=list(next_word_probs.values()), k=1)[0]
                 generated_text.append(next_word)
             else:
                 break
@@ -230,9 +230,10 @@ if __name__ == "__main__":
         sample_data = f.read()
 
     start = "I can do"
-    # ngram01_model = Ngram01(sample_data, 3)
-    # ngram01_model.generate_sequence(start)
+    ngram01_model = Ngram01(sample_data, 3)
+    ngram01_model.generate_sequence(start)
 
+    print("\n\n 2nd Response \n")
     ngram02_model = Ngram02(sample_data, 3)
     response_txt = ngram02_model.generate_ngram_text(start, 50)
     print(response_txt)
