@@ -420,3 +420,206 @@ Input is like this : `['b','a', 't', 'c', 'a', 't', 'c', 'a', 'p', 's', 'a', 'p'
     initial_vocab = {'b' : 1, 'a': 2, 't': 3, 'c': 4, 'p': 5, 's': 6, 'm': 7, 'f': 8, 'n': 9, 'ap': 10}
     ```
 Repeat this process until the desired size of vocabulary is reached
+
+
+
+# The Transformer Architecture
+
+The Transformer is a deep learning model introduced in the landmark 2017 paper *"Attention Is All You Need."* This architecture revolutionized natural language processing (NLP) by moving away from recurrent neural networks (RNNs) and becoming the foundation for most modern large language models (LLMs) like GPT, BERT, and T5. Its key innovation is the use of the self-attention mechanism, which processes all words in a sequence simultaneously.
+
+## 🧠 High-Level Diagram
+
+![Transformer Architecture](./images/transfomer_diagram.png)
+
+
+The original Transformer model is a classic **Encoder-Decoder** architecture, as shown in the diagram below.
+
+This architecture consists of:
+
+* **Encoder Stack**: The encoder is responsible for processing the input sequence and creating a contextual representation of each word. It processes all input tokens at once.
+
+* **Decoder Stack**: The decoder takes the encoder's output and generates the target output sequence, one token at a time.
+
+Each of these stacks is composed of multiple identical layers. Each layer contains two primary sub-layers: a **multi-head self-attention mechanism** and a **position-wise feed-forward network**.
+
+## 🔍 Core Components of a Transformer
+
+### A. Positional Encoding
+
+Since the Transformer processes tokens in parallel without any recurrence, it has no inherent sense of word order. 
+To solve this, **positional encoding** is added to the input embeddings. 
+This is a vector of fixed values that encodes the position of each token in the sequence. 
+It's essentially a special signal that tells the model where each word is located.
+
+### B. Transformer Block
+It is made up of two successive components:
+
+![Attention-Block](images/attention-block.png)
+
+1. **Self-Attention** : The attention layer is mainly concerned with incorporating relevant information from other input tokens and positions
+2. **Feed-Forward Network** : The feedforward layer houses the majority of the model’s processing capacity
+
+#### **`Self-Attention`**
+Self-attention is the heart of the Transformer. It allows the model to weigh the importance of different words in the input sequence when encoding a specific word. 
+
+📌 Example
+Consider the sentence:
+  > "The animal didn't cross the street because it was too tired."
+
+To understand what "it" refers to, the model must consider the entire sentence. Self-attention helps the model assign higher importance (attention weights) to "the animal" when processing "it," enabling correct interpretation.
+
+
+**⚙️ How It Works** :
+
+Each token is represented by its embedding vector. This vector is multiplied with the query, key, and value weight matrices to generate three input vectors. Self-attention
+
+for each token is then calculated like this:
+1. For each token, the dot products of its query vector with the key vectors of all the tokens (including itself) are taken. The resulting values are called attention scores.
+2. The scores are scaled down by dividing them by the square root of the dimension of the key vectors.
+3. The scores are then passed through a softmax function to turn them into a probability distribution that sums to 1. The softmax activation function tends to amplify larger values, hence the reason for scaling down the attention scores in
+ the previous step.
+4. The normalized attention scores are then multiplied by the value vector for the corresponding token. The normalized attention score can be interpreted as the proportion that each token contributes to the representation of a given token.
+5. In practice, there are multiple sets of query, key, and value vectors, calculating parallel representations. This is called multi-headed attention. The idea behind using multiple heads is that the model gets sufficient capacity to model various aspects of the input. The more the number of heads, the more chances that then right aspects of the input are being represented.
+
+![self-attention](images/self_attention.png)
+
+
+
+
+#### **`Feed-Forward Network`**
+After the attention mechanism, each encoder and decoder layer contains a simple, position-wise fully connected 
+feed-forward network. This network consists of two linear transformations with a ReLU activation in between. 
+It processes each position of the sequence independently.
+
+### C. Multi-Head Attention
+
+Instead of using a single attention function, the Transformer uses "multi-head" attention. This means it splits the Queries, Keys, and Values into multiple "heads" and performs the attention calculation for each head independently and in parallel. This allows the model to attend to different parts of the input sequence simultaneously, capturing various relationships and nuances. The outputs from all heads are then concatenated and passed through a linear layer.
+
+## How self attention is calculated
+
+The scaled dot-product attention formula is:
+
+$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$$
+
+* **$\sqrt{d_k}$** : A scaling factor to prevent the dot product from growing too large.
+
+Imagine that there is a table in a database with keys and values column, where keys are names of employee and say values are their salaries.
+
+| key (K) | value (V) |
+|---------|-----------|
+| jon     | 2000      |
+| john    | 2400      |
+| joan    | 4000      |
+| june    | 1500      |
+| jane    | 3000      | 
+
+Now you can employees which names are like `jo`, So then you query will be like this
+> Q = Key LIKE 'jon'
+
+so, now your query will execute against each row in the table and ranks table according to the similarity with the key.
+When you multiply Query and Key, you will get similarity score and we will get result back where score is equal to `1` 
+
+| key (K) | value (V) | similarity |  
+|---------|-----------|------------|
+| jon     | 2000      | 1          |
+| june    | 1500      | 0          |
+| jane    | 3000      | 0          |
+
+now there is 100 percent match with `jon` so we get value as `2000`, if there are 2 jon then we will get 2 values.
+
+let say we query and there are two keys like this `jon`, `john`, `joan` and we get similarity score like this
+
+| key (K) | value (V) | similarity |  
+|---------|-----------|------------|
+| jon     | 2000      | 1          |
+| john    | 2500      | 0.6        |
+| joan    | 1000      | 0.5        |
+
+so, now we have 3 values but they are unscaled and summation of their similarity does not adds to 1. 
+Hence we will apply softmax function over them and get the probabilities score or similarity score between 0 to 1.
+
+Softmax formula for a score s_i:
+$$\text{Softmax}(s_i) = \frac{e^{s_i}}{\sum_{j} e^{s_j}}$$
+
+- `jon` = ${e^1}/({e^1 + e^{0.6} + e^{0.5}})$ = 2.71 / 6.1891 = 0.4392  
+- `john` = ${e^{0.6}}/({e^1 + e^{0.6} + e^{0.5}})$ = 1.8221/6.1891= 0.2944
+- `joan` = ${e^{0.5}}/({e^1 + e^{0.6} + e^{0.5}})$ = 1.6467 / 6.1891 = 0.2663
+
+now, we will calculate weighted sum for the Query (Q) by multiplying Value (V) with Similarity (KQ) 
+ $$(0.4392 * 2000) + (0.2944 * 2500) + (0.2663 * 1000) = 1880.7$$
+
+We have done this only for 1 query, In the transformer we do this for all the tokens.
+first step in the calculating self-attention is to create Query (Q), Key (K) and Value (V) vector for each token embedding in the sentence. These vectors are created by multiplying the embedding by three matrices that we trained during the training process.
+
+So, let say that our 
+- context_length = `Nx`, embedding_dimension = `dim` ----> input to transformer block will be of size `(Nx * dim)`
+- Then calculate K,V,Q matrices for the given input by multiplying it with $W_q, W_k, W_v$ like below
+  - $Q = X * W_q$ ------->  ($N_x$, dim) * (dim, dim) = ($N_x$, dim)
+  - $K = X * W_k$ ------->  ($N_x$, dim) * (dim, dim) = ($N_x$, dim)
+  - $V = X * W_v$ ------->  ($N_x$, dim) * (dim, dim) = ($N_x$, dim)
+
+  Here, $W_q, W_k, W_v$ are all of size `(dim, dim)`
+
+- Then calculate scaled dot product by multiplying Q and K 
+  - ${QK^T}$ -------> ($N_x$, dim) * (dim, $N_x$) = ($N_x$, $N_x$)
+  - scale above result by dividing it with ${\sqrt{d_k}}$
+  - apply softmax over it ---> $\text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)$
+- multiply it with V
+  - $\text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)$ * V   -------> ($N_x$, $N_x$) * ($N_x$, dim) = ($N_x$, dim)
+
+Finally we get the self-attention, 
+
+$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$
+
+This is how self attention  is implemented  : 
+
+```py
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+q = wQ(input_embeddings)
+k = WK(input_embeddings)
+v = WV(input_embeddings)
+dim_k = k.size(-1)
+
+attn_scores = torch.matmul(q, k.transpose(-2, -1))
+
+scaled_attn_scores = attn_scores/torch.sqrt(torch.tensor(dim_k, dtype=torch.float32))
+
+normalized_attn_scores = F.softmax(scaled_attn_scores, dim=-1)
+
+output = torch.matmul(normalized_attn_scores, v)
+```
+
+## 🏗️ Three Types of Transformer Architectures
+
+Based on the combination of encoder and decoder blocks, Transformer models can be categorized into three main types, each suited for different tasks.
+
+1. **Encoder-only Transformer**: These models have only the encoder stack. They are excellent for tasks that require a deep understanding of the input text but do not involve generating new text, such as:
+
+    * Sentiment Analysis
+
+    * Text Classification
+
+    * Named Entity Recognition
+
+    * **Example Model**: **BERT** (Bidirectional Encoder Representations from Transformers)
+
+2. **Decoder-only Transformer**: These are **autoregressive** models that have only the decoder stack. They predict the next token based on the tokens that came before it. A key feature is the **masked self-attention** which prevents the model from "seeing" future tokens, ensuring it can only attend to the current token and those preceding it. These models are ideal for:
+
+    * Text Generation
+
+    * Language Modeling
+
+    * **Example Model**: **GPT** (Generative Pre-trained Transformer)
+
+3. **Encoder-Decoder Transformer**: These models have both an encoder and a decoder, just like the original Transformer. They are used for sequence-to-sequence tasks where the model needs to understand an input sequence and then generate a new, different output sequence. Common use cases include:
+
+    * Machine Translation
+
+    * Text Summarization
+
+    * Question Answering
+
+    * **Example Models**: **T5** (Text-to-Text Transfer Transformer), **BART** (Bidirectional and Auto-Regressive Transformers)
