@@ -821,3 +821,47 @@ Each token is represented by its embedding vector. This vector is multiplied wit
 to generate three input vectors. 
 attention for each token using below formula:  
 $$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$$
+
+```python
+class Attention(nn.Module):
+    def __init__(self, config: CharGPTConfig):
+        super().__init__()
+
+        self.emb_dim = config.emb_dim  # d_model
+        self.dropout = CharGPTConfig.dropout
+        self.W_q = nn.Linear(in_features=self.emb_dim, out_features=self.emb_dim, bias=False)
+        self.W_k = nn.Linear(in_features=self.emb_dim, out_features=self.emb_dim, bias=False)
+        self.W_v = nn.Linear(in_features=self.emb_dim, out_features=self.emb_dim, bias=False)
+
+        self.flash = hasattr(torch.nn.functional, 'scaled_dot_product_attention')
+        if self.flash:
+            self.register_buffer("mask", torch.tril(torch.ones(CharGPTConfig.block_size, CharGPTConfig.block_size)))
+
+    def forward(self, x, is_mask=True):
+        B, T, C = x.shape  # B, block_size, emb_dim
+        q = self.W_q(x)  # (B, block_size, emb_dim) *  (emb_dim, emb_dim)  ->  (B, block_size, emb_dim)
+        k = self.W_k(x)  # (B, block_size, emb_dim) *  (emb_dim, emb_dim)  ->  (B, block_size, emb_dim)
+        v = self.W_v(x)  # (B, block_size, emb_dim) *  (emb_dim, emb_dim)  ->  (B, block_size, emb_dim)
+
+        if self.flash:
+            output = F.scaled_dot_product_attention(q, k, v, attn_mask=None,
+                                                    dropout_p=self.dropout if self.training else 0, is_causal=True)
+        else:
+            # (B, block_size, emb_dim) * (B, emb_dim, block_size) -> (B, block_size, block_size)
+            attention_score = torch.matmul(q, k.transpose(dim0=-2, dim1=-1))
+
+            # print(f"{k.shape[-1], self.d_model}") # are equal or same
+            # (B, block_size, block_size)
+            scaled_score = attention_score / torch.sqrt(torch.tensor(k.shape[-1], dtype=torch.float32))
+
+            if is_mask:
+                # (B, block_size, block_size)
+                scaled_score = scaled_score.masked_fill(self.mask[:T, :T] == 0, float('-inf'))
+
+            # print("normalised")
+            normalized_score = F.softmax(scaled_score, dim=-1) # (B, block_size, block_size)
+
+            # (B, block_size, block_size) * (B, block_size, emb_dim)  ->  (B, block_size, emb_dim)
+            output = torch.matmul(normalized_score, v)
+        return output
+```
