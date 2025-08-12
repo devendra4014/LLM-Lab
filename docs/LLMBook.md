@@ -623,3 +623,201 @@ Based on the combination of encoder and decoder blocks, Transformer models can b
     * Question Answering
 
     * **Example Models**: **T5** (Text-to-Text Transfer Transformer), **BART** (Bidirectional and Auto-Regressive Transformers)
+
+# Implementing Decoder-Only Autoregressive Language model
+<img src="images/decoder-only-architure.png" width="250" height="600" alt="decoder-only-architecture">
+
+
+## Positional Encoding Explained
+
+Positional encoding is a technique used in transformer models to provide information about the **position of tokens** (words) within a sequence. This is crucial because, unlike recurrent neural networks, transformers process all tokens simultaneously without inherent knowledge of their order.
+
+***
+
+### The Positional Encoding Formula
+
+The formula for calculating the positional encoding vector is based on sine and cosine functions. This allows for a unique encoding for each position that is also easy for the model to learn relative relationships between positions.
+
+$$
+\begin{align*}
+PE_{(pos, 2i)} &= \sin\left(\frac{pos}{10000^{2i/d_{model}}}\right) \\
+PE_{(pos, 2i+1)} &= \cos\left(\frac{pos}{10000^{2i/d_{model}}}\right)
+\end{align*}
+$$
+
+***
+
+### Formula Breakdown
+
+* `pos`: The **position** of the token in the sequence. This starts from 0.
+* `i`: The **dimension** index of the positional encoding vector. This also starts from 0 and goes up to $d_{model}/2 - 1$.
+* `$d_{model}$`: The **dimension** of the embedding vector. This is the size of the vector that represents each token.
+
+The total number of positions in the positional encoding matrix is typically equal to the **block size** or **context length** of the model.
+
+For example, if the embedding dimension ($d_{model}$) is 512, then the dimension index `i` would range from 0, 1, 2, ..., 255.
+
+***
+
+### Simplifying the Formula with Logarithms
+
+The positional encoding formula can be simplified using the rules of logarithms.
+
+#### Logarithm Rules
+
+The fundamental rule of logarithms states:
+$$a^x = k \iff \log_a(k) = x$$
+A special case is when the base is $e$:
+$$e^x = k \iff \log_e(k) = x$$
+Combining these gives us the useful identity:
+$$e^{\log_e(k)} = k \quad (\text{Equation 1})$$
+
+#### Applying the Rule
+
+Let's simplify the denominator of our positional encoding formula:
+
+$k = \frac{1}{10000^{2i/d_{model}}} = 10000^{-2i/d_{model}}$
+
+By substituting this value into Equation 1, we get:
+
+$$10000^{-2i/d_{model}} = e^{\log_e(10000^{-2i/d_{model}})}$$
+Using the logarithm power rule ($\log_a(x^y) = y \cdot \log_a(x)$), this simplifies further to:
+$$10000^{-2i/d_{model}} = e^{\left(-\frac{2i}{d_{model}}\right) \times \log_e(10000)}$$
+
+
+final formula is
+
+$$
+\begin{align*}
+PE_{(pos, 2i)} &= \sin\left({pos} \times {e^{\left(-\frac{2i}{d_{model}}\right) \times \log_e(10000)}}\right) \\
+PE_{(pos, 2i+1)} &= \cos\left({pos} \times {e^{\left(-\frac{2i}{d_{model}}\right) \times \log_e(10000)}}\right)
+\end{align*}
+$$
+
+```py
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, max_len=512):
+        super().__init__()
+
+        self.d_model = d_model
+        self.max_len = max_len
+
+        # create positional encoding vector
+        pe = torch.zeros(max_len, d_model)
+
+        # positions in columns
+        positions = torch.arange(start=0, end=max_len, dtype=torch.float).unsqueeze(dim=1)
+
+        embedding_index = torch.arange(start=0, end=d_model, step=2, dtype=torch.float)
+        denominator = 1 / torch.tensor(10000.0).pow(embedding_index / d_model)
+        # exp_term = torch.exp(torch.arange(0, d_model, 2).float() * (-torch.log(torch.tensor(10000.0)) / d_model))
+        # print(torch.allclose(exp_term, denominator))
+
+        # pe[:, 0::2]
+        # ':' refers to rows from first to last &&
+        # '0::2' refers to columns starting from 0th column with step size = 2
+        pe[:, 0::2] = torch.sin(positions * denominator)  # even positions
+        pe[:, 1::2] = torch.cos(positions * denominator)  # odd positions
+
+        #  "register_buffer()" ensures that 'pe' will be moved to wherever the model gets moved to. So if the
+        # model is moved to a GPU, then, even though we don't need to optimize 'pe', it will also be moved to that
+        # GPU. # This, in turn, means that accessing 'pe' will be relatively fast compared to having a GPU have to get
+        # the data from a CPU.
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        # x.size(1) will give number of tokens, so we will get positional encoding only for that number of tokens
+        return x + self.pe[:x.size(1), :]
+```
+
+## Layer Normalization
+Layer normalization is performed to ensure training stability and faster training convergence. While the original Transformer architecture performed normalization at the beginning of the block, modern implementations do it at the end of the block.
+
+The normalization is performed as follows:
+1. Given an input of batch size b, sequence length n, and vector dimension d, calculate the mean and variance across each vector dimension.
+2. Normalize the input by subtracting the mean and dividing it by the square root of the variance. A small epsilon value is added to the denominator for numerical stability.
+3. Multiply by a scale parameter and add a shift parameter to the resulting values.
+ These parameters are learned during the training process.
+
+ ### The Formula
+
+The formula for Layer Normalization is:
+
+$$y = \frac{x - \mu}{\sqrt{\sigma^2 + \epsilon}} \cdot \gamma + \beta$$
+$$  = \frac{x - \mu}{{\sigma + \epsilon}} \cdot \gamma + \beta $$ 
+Here, $\sigma$ is std. deviation
+
+* $x$: The **input vector** to the layer for a single training example.
+* $\mu$: The **mean** of the input vector, calculated across all the features of a single example.
+* $\sigma^2$: The **variance** of the input vector, also calculated across the features of a single example. standard deviation is the square root of the variance (std deviation = $\sqrt{\sigma^2} = \sigma $)
+* $\epsilon$: A small constant added for **numerical stability** to prevent division by zero.
+* $\gamma$: A learnable **scaling parameter** (also known as a gain).
+* $\beta$: A learnable **shifting parameter** (also known as a bias).
+
+The learnable parameters, $\gamma$ and $\beta$, enable the model to learn the optimal scale and shift for the normalized output, which can be critical for the network's expressiveness and performance.
+
+Python Code :
+```py
+class LayerNormalization(nn.Module):
+    def __init__(self, features, eps=1e-6):
+        super().__init__()
+
+        self.eps = eps
+        self.gamma = nn.Parameter(torch.ones(features))
+        self.beta = nn.Parameter(torch.zeros(features))
+
+    def forward(self, x: torch.Tensor):
+        # x ==> (B, T, C)
+        # (B = Batch Size), (T = `block_size`, or `context_length`), (C = Embedding Dimension 'emb_dim' or 'features')
+
+        x_mean = x.mean(dim=-1, keepdim=True)  # mean across vector dimension ==> x.size(2)
+        x_std = x.std(dim=-1, keepdim=True, unbiased=False)  # standard deviation across vector dimension ==> x.size(2)
+        # variance = x.var(-1, keepdim=True, unbiased=False)
+        # denominator = torch.sqrt(variance + self.eps) <==> (x_std + self.eps)
+
+        x_norm = (x - x_mean) / (x_std + self.eps)
+        x = self.gamma * x_norm + self.beta
+
+        return x
+```
+
+### RMSNorm
+Most recent transformer models use RMS Norm instead of LayerNorm. The key difference is that RMS Norm only scales the input without shifting it. 
+
+The mathematical formulation is:
+$$y = \frac{x}{\sqrt{\frac{1}{n} \sum_{i=1}^{n} x_i^2 + \epsilon}} \cdot \gamma$$
+ 
+Where:
+* $x$: The **input vector** to the layer.
+* $n$: The **size of the input vector** (number of features or embedding dimension).
+* $\sum x_i^2$: The sum of the squares of the elements in the input vector.
+* $\epsilon$: A small constant for **numerical stability** to prevent division by zero.
+* $\gamma$: A learnable **scaling parameter** (also known as a gain)..
+
+Compared to LayerNorm, RMS Norm requires fewer calculations and has a smaller memory footprint. Unlike Layer Normalization, RMSNorm does not include a learnable bias ($\beta$) term. 
+
+Here’s the implementation:
+
+```py
+class RMSNorm(nn.Module):
+    def __init__(self, feature, eps=1e-6):
+        super().__init__()
+        self.eps = eps
+        self.features = feature
+        self.gain = nn.Parameter(torch.ones(feature))
+
+    def forward(self, x):
+        # Calculate RMS across the last dimension(s)
+        # torch.rsqrt() will calculate inverse square root, Hence no need to divide by this term, instead we multiply
+        rms = torch.rsqrt(torch.pow(x, 2).mean(dim=-1, keepdim=True) + self.eps)
+
+        # Normalize
+        x_norm = x * rms * self.gain
+        return x_norm
+```
+
+## AttentionBlock
+Each token is represented by its embedding vector. This vector is multiplied with the query, key, and value weight matrices 
+to generate three input vectors. 
+attention for each token using below formula:  
+$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$$
