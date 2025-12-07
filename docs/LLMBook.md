@@ -61,12 +61,12 @@ To further align models with human needs and domain-specific tasks, model provid
 
 Depending on the augmentation strategy, models are categorized as:
 
-| Model Type       | Description                                                                 |
-|------------------|-----------------------------------------------------------------------------|
-| `Base Model`     | Pretrained on general text; not task-specific                               |
-| `Instruct Model` | Tuned via SFT to follow instructions                                        |
-| `Chat Model`     | Tuned via RLHF for conversational alignment                                 |
-| `Domain Model`   | Adapted via DAPT/TAPT for specialized domains                               |
+| Model Type       | Description                                   |
+| ---------------- | --------------------------------------------- |
+| `Base Model`     | Pretrained on general text; not task-specific |
+| `Instruct Model` | Tuned via SFT to follow instructions          |
+| `Chat Model`     | Tuned via RLHF for conversational alignment   |
+| `Domain Model`   | Adapted via DAPT/TAPT for specialized domains |
 
 ---
 
@@ -324,12 +324,12 @@ Pre-tokenization splits raw text into preliminary word-like segments before voca
 
 This is the heart of the tokenizer where raw segments are mapped to vocabulary indexes using learned rules or models. Popular algorithms include:
 
-| Algorithm           | Description                                                                 |
-|---------------------|------------------------------------------------------------------------------|
-| Byte Pair Encoding (BPE)     | Iteratively merges frequent symbol pairs to form subwords             |
-| Byte-level BPE                | Operates directly on bytes, allowing any Unicode character to be tokenized |
-| WordPiece                     | Used in BERT; splits words into subword units based on probability       |
-| Unigram Language Model        | Probabilistically selects tokenization based on a trained language model |
+| Algorithm                | Description                                                                |
+| ------------------------ | -------------------------------------------------------------------------- |
+| Byte Pair Encoding (BPE) | Iteratively merges frequent symbol pairs to form subwords                  |
+| Byte-level BPE           | Operates directly on bytes, allowing any Unicode character to be tokenized |
+| WordPiece                | Used in BERT; splits words into subword units based on probability         |
+| Unigram Language Model   | Probabilistically selects tokenization based on a trained language model   |
 
 - 🔍 During this stage, a vocabulary is built that assigns a unique ID to each token.
 
@@ -506,12 +506,12 @@ $$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)
 Imagine that there is a table in a database with keys and values column, where keys are names of employee and say values are their salaries.
 
 | key (K) | value (V) |
-|---------|-----------|
+| ------- | --------- |
 | jon     | 2000      |
 | john    | 2400      |
 | joan    | 4000      |
 | june    | 1500      |
-| jane    | 3000      | 
+| jane    | 3000      |
 
 Now you can employees which names are like `jo`, So then you query will be like this
 > Q = Key LIKE 'jon'
@@ -519,8 +519,8 @@ Now you can employees which names are like `jo`, So then you query will be like 
 so, now your query will execute against each row in the table and ranks table according to the similarity with the key.
 When you multiply Query and Key, you will get similarity score and we will get result back where score is equal to `1` 
 
-| key (K) | value (V) | similarity |  
-|---------|-----------|------------|
+| key (K) | value (V) | similarity |
+| ------- | --------- | ---------- |
 | jon     | 2000      | 1          |
 | june    | 1500      | 0          |
 | jane    | 3000      | 0          |
@@ -529,8 +529,8 @@ now there is 100 percent match with `jon` so we get value as `2000`, if there ar
 
 let say we query and there are two keys like this `jon`, `john`, `joan` and we get similarity score like this
 
-| key (K) | value (V) | similarity |  
-|---------|-----------|------------|
+| key (K) | value (V) | similarity |
+| ------- | --------- | ---------- |
 | jon     | 2000      | 1          |
 | john    | 2500      | 0.6        |
 | joan    | 1000      | 0.5        |
@@ -743,13 +743,16 @@ The normalization is performed as follows:
 
 The formula for Layer Normalization is:
 
-$$y = \frac{x - \mu}{\sqrt{\sigma^2 + \epsilon}} \cdot \gamma + \beta$$
+$$y = \frac{x - \mu}{\sqrt{\sigma^2 }+ \epsilon} \cdot \gamma + \beta$$
 $$  = \frac{x - \mu}{{\sigma + \epsilon}} \cdot \gamma + \beta $$ 
+
 Here, $\sigma$ is std. deviation
 
 * $x$: The **input vector** to the layer for a single training example.
-* $\mu$: The **mean** of the input vector, calculated across all the features of a single example.
-* $\sigma^2$: The **variance** of the input vector, also calculated across the features of a single example. standard deviation is the square root of the variance (std deviation = $\sqrt{\sigma^2} = \sigma $)
+* $\mu$: The **Mean** of the input vector, calculated across all the features of a single example.
+* The standard deviation is simply the square root of the variance:
+* $\sigma^2$: The **Variance** of the input vector, also calculated across the features of a single example. standard deviation is the square root of the variance (${SD}(\mathbf{x}) = \sqrt{variance} =\sqrt{\sigma^2} = \sigma $) and (${Var}(\mathbf{x}) = \frac{1}{n} \sum_{j=1}^n (x_j - \mu(\mathbf{x}))^2$)
+
 * $\epsilon$: A small constant added for **numerical stability** to prevent division by zero.
 * $\gamma$: A learnable **scaling parameter** (also known as a gain).
 * $\beta$: A learnable **shifting parameter** (also known as a bias).
@@ -817,8 +820,8 @@ class RMSNorm(nn.Module):
 ```
 
 ## AttentionBlock
-Each token is represented by its embedding vector. This vector is multiplied with the query, key, and value weight matrices 
-to generate three input vectors. 
+Each token is represented by its embedding vector. This vector is multiplied with the query, key, and value weight matrices to generate three input vectors. 
+
 attention for each token using below formula:  
 $$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$$
 
@@ -865,3 +868,89 @@ class Attention(nn.Module):
             output = torch.matmul(normalized_score, v)
         return output
 ```
+
+
+#  Quantization and Fine-Tuning
+
+## Quantization
+`defination` : Conversion from higher memory format to lower memory format.
+
+example : converting weights or parameters of Neural Network from FP-32 to FP-16 or Int-8. Here FP-32 denotes *Full Precision* or *Single Precision*.
+
+> ***what problem it solves ?***
+    - it reduces the size of Neural Network making model size smaller.
+    - because of less precision model accuracy will decrease but also it become smaller and faster at the time of inference.
+    - we can deploy or use quantized model in the edge devices like mobile or less RAM laptop.
+
+## 🎯 Key Benefits
+
+- **Reduced Memory Usage**: Smaller model footprint
+- **Faster Inference**: Lower precision calculations are faster
+- **Energy Efficiency**: Less computational power required
+- **Edge Device Deployment**: Enables deployment on resource-constrained devices
+- **Bandwidth Optimization**: Smaller models require less network bandwidth
+  
+## 🔄 Types of Quantization
+
+#### 1. Symmetric Quantization
+
+- Uses a symmetric range around zero
+- Simpler implementation and computation
+- Formula: `q = round(r / scale)`
+  - `q`: quantized value
+  - `r`: real value
+  - `scale`: scaling factor
+- Scale can be calculated for some range like q_min and q_max and the real values are in range x_min and x_max then :
+   
+$$Scale = \frac{x_{min} - x_{max}}{q_{min} - q_{max}}$$
+
+```python
+# Example of symmetric quantization
+def symmetric_quantize(x, num_bits=8):
+    max_val = torch.max(torch.abs(x))
+    scale = max_val / (2 ** (num_bits - 1) - 1)
+    return torch.round(x / scale) * scale
+```
+
+#### 2. Asymmetric Quantization
+
+- Uses different ranges for positive and negative values
+- More flexible but complex implementation
+- Formula: `q = round((r - zero_point) / scale)`
+  - `zero_point`: offset to handle asymmetric ranges
+  - Better precision for unbalanced distributions
+
+```python
+# Example of asymmetric quantization
+def asymmetric_quantize(x, num_bits=8):
+    min_val = torch.min(x)
+    max_val = torch.max(x)
+    scale = (max_val - min_val) / (2**num_bits - 1)
+    zero_point = round(-min_val / scale)
+    return torch.round(x / scale + zero_point) * scale - zero_point * scale
+```
+
+### Modes of Quantization
+In `Post trainning Qunatization` method, we will take a pre-trained model and perform caliberation on it and convert it to quantised model. then this qunatised model is used for any use case but in this method acccuracy will drop. 
+When this quantised model is again fine-tunned with trainnig data it is called as `Qunatization Aware Trainning`.
+
+## Fine-Tunning
+
+### LORA (Low Rank Adaptation)
+In full fine-tunning, we take pretrained model (GPT, BERT) and update all its parameters during the training phase. Although it is *memory-heavy*, *computation-heavy*, *storage-heavy*.
+
+Instread of updating the full weight `W`, LORA proposes to keep pre-trained model parameters ($W$) frozen and only learn a small low-ranked decomposition that approximates the desired update.
+
+Let $W_o$ be the pretrained weight.
+During fine-tuning, instead of learning a new $W = W_o + \Delta W$ (full update), LORA assumes : 
+$$\Delta W = BA$$
+
+where, 
+- $A \in \mathbb{R}^{r \times d_{\text{in}}}$
+- $B \in \mathbb{R}^{d_{\text{out}} \times r}$
+- $r \ll min(d_{in}, d_{out})$
+
+Thus, the adapted layer output becomes:
+$$ h = W_o x + \alpha BAx$$
+
+while, $\alpha$ is a scaling factor ($\alpha = r/s$ for stability)
