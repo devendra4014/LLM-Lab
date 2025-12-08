@@ -1,0 +1,8 @@
+
+# Runtime dependencies
+numpy>=1.21
+regex>=2022.10.31
+
+# Dev / Test
+pytest>=6.0
+
