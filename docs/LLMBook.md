@@ -744,6 +744,8 @@ The normalization is performed as follows:
 The formula for Layer Normalization is:
 
 $$y = \frac{x - \mu}{\sqrt{\sigma^2 }+ \epsilon} \cdot \gamma + \beta$$
+
+
 $$  = \frac{x - \mu}{{\sigma + \epsilon}} \cdot \gamma + \beta $$ 
 
 Here, $\sigma$ is std. deviation
