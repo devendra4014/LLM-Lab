@@ -149,7 +149,9 @@ Document quality plays a pivotal role in training effective language models. Hig
 - **Method**: Compute **Kullback-Leibler (K-L) divergence** between the document's token distribution and a trusted reference (e.g., Wikipedia corpus).
 - **Outcome**: Filters out documents filled with outlier or domain-specific tokens.
 - **Formula (K-L Divergence)** :
+
   $$ D_{KL}(P || Q) = \sum_i P(i) \log \frac{P(i)}{Q(i)} $$
+
   Where:
     - *P(i)*: Probability distribution of tokens in the document
     - *Q(i)*: Reference token distribution
@@ -753,7 +755,11 @@ Here, $\sigma$ is std. deviation
 * $x$: The **input vector** to the layer for a single training example.
 * $\mu$: The **Mean** of the input vector, calculated across all the features of a single example.
 * The standard deviation is simply the square root of the variance:
-* $\sigma^2$: The **Variance** of the input vector, also calculated across the features of a single example. standard deviation is the square root of the variance (${SD}(\mathbf{x}) = \sqrt{variance} =\sqrt{\sigma^2} = \sigma $) and (${Var}(\mathbf{x}) = \frac{1}{n} \sum_{j=1}^n (x_j - \mu(\mathbf{x}))^2$)
+* $\sigma^2$: The **Variance** of the input vector, also calculated across the features of a single example. standard deviation is the square root of the variance 
+  ($\mathrm{SD}(\mathbf{x}) = \sqrt{\mathrm{variance}} = \sqrt{\sigma^2} = \sigma $) 
+  and ($\mathrm{Var}(\mathbf{x}) = \frac{1}{n} \sum_{j=1}^n (x_j - \mu(\mathbf{x}))^2$)
+
+
 
 * $\epsilon$: A small constant added for **numerical stability** to prevent division by zero.
 * $\gamma$: A learnable **scaling parameter** (also known as a gain).
