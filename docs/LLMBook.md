@@ -960,7 +960,6 @@ where,
 - $B \in \mathbb{R}^{d_{\text{out}} \times r}$
 - $r \ll min(d_{in}, d_{out})$
 
-Thus, the adapted layer output becomes:  
-$$h = W_{o} x + \alpha B A x$$
+Thus, the adapted layer output becomes:  $h = W_{o} x + \alpha B A x$
 
 while, $\alpha$ is a scaling factor ($\alpha = r/s$ for stability)
