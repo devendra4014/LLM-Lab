@@ -174,7 +174,7 @@ Document quality plays a pivotal role in training effective language models. Hig
 
   $$ \text{Perplexity}(D) = \exp\left(-\frac{1}{N} \sum_{i=1}^{N} \log P(w_i) \right) $$
 
-  Where:
+Where:
   - *N*: Total number of tokens in document *D*
   - *P(w_i)*: Model-assigned probability of token *w_i*
 
