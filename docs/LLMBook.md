@@ -171,10 +171,9 @@ Document quality plays a pivotal role in training effective language models. Hig
 - **Definition**: Perplexity evaluates how well a language model predicts the next token in a sequence.
 - **Usage**: Assigns a quality score to each document. Lower perplexity suggests better predictability and coherence.
 - **Formula**:
-
     $$
     \text{Perplexity}(D) = \exp\left(-\frac{1}{N} \sum_{i=1}^{N} \log P(w_i) \right)
-    $$
+  $$
 
 Where:
   - *N*: Total number of tokens in document *D*
