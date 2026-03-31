@@ -1,3 +1,7 @@
 .idea
 .venv
 pytorch-sample-code
+data\small_tiny_stories
+.*
+.*
+!.gitignore
